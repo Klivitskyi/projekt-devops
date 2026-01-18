@@ -4,14 +4,15 @@
 
 Aby pipeline działał poprawnie, musisz skonfigurować następujące secrets w ustawieniach repozytorium GitHub (`Settings` → `Secrets and variables` → `Actions`):
 
-### 1. REGISTRY
-Registry Docker, np.:
+### 1. REGISTRY (opcjonalne)
+Registry Docker (domyślnie: `docker.io`), np.:
+- `docker.io` (Docker Hub) - **domyślne**
 - `ghcr.io` (GitHub Container Registry)
-- `docker.io` (Docker Hub)
 - `registry.example.com` (własny registry)
 
-### 2. REMOTE_REPOSITORY
-Nazwa repozytorium obrazów Docker, np.:
+### 2. REMOTE_REPOSITORY (opcjonalne)
+Nazwa repozytorium obrazów Docker (domyślnie: `ivanklivitskyi/simple-python-app`), np.:
+- `ivanklivitskyi/simple-python-app` - **domyślne**
 - `username/repo-name`
 - `organization/repo-name`
 
@@ -21,10 +22,18 @@ Nazwa użytkownika do logowania do registry Docker
 ### 4. DOCKER_PASSWORD
 Hasło/token do logowania do registry Docker
 
-## Przykładowa konfiguracja dla GitHub Container Registry
+## Przykładowa konfiguracja dla Docker Hub (domyślna)
+
+**Domyślne wartości** (bez konfiguracji secrets):
+- **REGISTRY**: `docker.io` (automatycznie)
+- **REMOTE_REPOSITORY**: `ivanklivitskyi/simple-python-app` (automatycznie)
+- **DOCKER_USERNAME**: Twój username Docker Hub (wymagane)
+- **DOCKER_PASSWORD**: Token dostępu Docker Hub (wymagane)
+
+**Alternatywnie dla GitHub Container Registry:**
 
 1. **REGISTRY**: `ghcr.io`
-2. **REMOTE_REPOSITORY**: `username/repo-name` (lub użyj `${{ github.repository }}`)
+2. **REMOTE_REPOSITORY**: `Klivitskyi/projekt-devops` (lub inna nazwa)
 3. **DOCKER_USERNAME**: Twój username GitHub
 4. **DOCKER_PASSWORD**: Personal Access Token (PAT) z uprawnieniami `write:packages`
 

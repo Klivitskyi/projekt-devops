@@ -65,11 +65,18 @@ Pipeline działa automatycznie przy:
 
 ## Konfiguracja
 
-Przed pierwszym użyciem należy skonfigurować secrets w GitHub:
-- `REGISTRY` - Registry Docker (np. `ghcr.io`)
+**Domyślne wartości** (bez konfiguracji secrets):
+- Registry: `docker.io` (Docker Hub)
+- Obraz: `ivanklivitskyi/simple-python-app`
+- Repozytorium: `https://github.com/Klivitskyi/projekt-devops`
+
+**Wymagane secrets w GitHub** (tylko dla Docker Hub):
+- `DOCKER_USERNAME` - Username Docker Hub
+- `DOCKER_PASSWORD` - Token dostępu Docker Hub
+
+**Opcjonalne secrets** (jeśli chcesz użyć innego registry):
+- `REGISTRY` - Registry Docker
 - `REMOTE_REPOSITORY` - Nazwa repozytorium obrazów
-- `DOCKER_USERNAME` - Username do registry
-- `DOCKER_PASSWORD` - Hasło/token do registry
 
 Szczegółowe instrukcje w [SETUP.md](SETUP.md).
 

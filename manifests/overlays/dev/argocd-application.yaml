@@ -8,7 +8,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/USERNAME/REPO.git  # Zastąp swoim repozytorium
+    repoURL: https://github.com/Klivitskyi/projekt-devops.git
     targetRevision: dev
     path: manifests/overlays/dev
   destination:
