@@ -4,6 +4,10 @@ metadata:
   name: devops-app-service
   labels:
     app: devops-app
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "5000"
+    prometheus.io/path: "/metrics"
 spec:
   type: ClusterIP
   ports:
@@ -11,6 +15,10 @@ spec:
     targetPort: 5000
     protocol: TCP
     name: http
+  - port: 5000
+    targetPort: 5000
+    protocol: TCP
+    name: metrics
   selector:
     app: devops-app
 

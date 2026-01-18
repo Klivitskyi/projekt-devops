@@ -40,3 +40,16 @@ def test_echo_endpoint(client):
     assert 'received' in data
     assert data['received'] == test_data
 
+
+def test_metrics_endpoint(client):
+    """Test endpointu metrics Prometheus"""
+    response = client.get('/metrics')
+    assert response.status_code == 200
+    assert response.content_type == 'text/plain; version=0.0.4; charset=utf-8'
+    # Sprawdź czy zawiera podstawowe metryki
+    metrics_text = response.get_data(as_text=True)
+    assert 'http_requests_total' in metrics_text
+    assert 'http_request_duration_seconds' in metrics_text
+    assert 'http_requests_active' in metrics_text
+    assert 'app_info' in metrics_text
+

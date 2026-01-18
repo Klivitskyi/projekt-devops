@@ -33,6 +33,13 @@ projekt-devops/
 4. Uruchomienie testów: `pytest tests/`
 5. Budowanie obrazu Docker: `docker build -t app:latest .`
 
+## Endpointy API
+
+- `GET /` - Health check
+- `GET /api/info` - Informacje o aplikacji
+- `POST /api/echo` - Echo endpoint (zwraca przesłane dane)
+- `GET /metrics` - Metryki Prometheus (do scrapowania przez Prometheus)
+
 ## CI/CD Pipeline (GitOps)
 
 Pipeline działa automatycznie przy:
