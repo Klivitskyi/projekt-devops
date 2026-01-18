@@ -8,4 +8,4 @@ spec:
     spec:
       containers:
         - name: devops-app
-          image: docker.io/ivanklivitskyi/simple-python-app:0.0.1
+          image: docker.io/ivanklivitskyi/simple-python-app:0.0.2
