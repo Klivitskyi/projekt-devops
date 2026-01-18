@@ -1,0 +1,161 @@
+name: CI/CD GitOps Pipeline
+
+on:
+  push:
+    branches: ['*']
+    tags: ['*']
+  pull_request:
+    branches: ['*']
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  REGISTRY: ${{ secrets.REGISTRY }}
+  REMOTE_REPO: ${{ secrets.REMOTE_REPOSITORY }}
+  GITHUB_REPOSITORY: ${{ github.repository }}
+  APP_NAME: devops-app
+
+jobs:
+  test:
+    name: Test & Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pip-audit bandit
+
+      - name: Run pytest
+        run: python -m pytest -q
+
+      - name: Run pip-audit
+        run: python -m pip_audit --progress-spinner off
+
+      - name: Run bandit
+        run: bandit -r . -q || true
+
+  build-and-push:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/tags/')
+    outputs:
+      tag: ${{ steps.image.outputs.tag }}
+      target: ${{ steps.image.outputs.target }}
+      push_branch: ${{ steps.image.outputs.push_branch }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine image tag and target
+        id: image
+        env:
+          REGISTRY: ${{ secrets.REGISTRY }}
+          REMOTE_REPO: ${{ secrets.REMOTE_REPOSITORY }}
+        run: |
+          echo ${REGISTRY}/${REMOTE_REPO}
+          
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            TARGET=prod
+            PUSH_BRANCH=main
+          else
+            TAG_NAME=dev-${GITHUB_SHA::7}
+            TARGET=dev
+            PUSH_BRANCH=dev
+          fi
+          
+          echo "tag=${TAG_NAME}" >> "$GITHUB_OUTPUT"
+          echo "target=${TARGET}" >> "$GITHUB_OUTPUT"
+          echo "push_branch=${PUSH_BRANCH}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.REGISTRY }}/${{ secrets.REMOTE_REPOSITORY }}:${{ steps.image.outputs.tag }}
+
+  update-manifests:
+    name: Update Manifests for ArgoCD
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/tags/'))
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Update overlay manifest
+        env:
+          REGISTRY: ${{ secrets.REGISTRY }}
+          REMOTE_REPO: ${{ secrets.REMOTE_REPOSITORY }}
+          TAG: ${{ needs.build-and-push.outputs.tag }}
+          TARGET: ${{ needs.build-and-push.outputs.target }}
+          APP_NAME: ${{ env.APP_NAME }}
+        run: |
+          PATCH_FILE=manifests/overlays/${TARGET}/patch-deployment.yaml
+          
+          if [ "${TARGET}" = "prod" ]; then
+            REPLICAS=3
+          else
+            REPLICAS=1
+          fi
+          
+          cat > ${PATCH_FILE} <<EOF
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: ${APP_NAME}
+          spec:
+            replicas: ${REPLICAS}
+            template:
+              spec:
+                containers:
+                  - name: ${APP_NAME}
+                    image: ${REGISTRY}/${REMOTE_REPO}:${TAG}
+          EOF
+          
+          git add ${PATCH_FILE}
+          git commit -m "chore: update ${TARGET} image to ${TAG}" || true
+          git push origin HEAD:${{ needs.build-and-push.outputs.push_branch }} || true
+
